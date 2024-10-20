@@ -1,7 +1,5 @@
 #include <cstddef>
 #include <cuda.h>
-#include <cuda_runtime_api.h>
-#include <device_launch_parameters.h>
 
 template <int Size, typename T>
 __global__ void __scalar_assign(T * __restrict__ data, T scalar)
