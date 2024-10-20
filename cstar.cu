@@ -155,13 +155,7 @@ private:
             return result;
         }
 
-        Reference& operator=(T rhs)
-        {
-            cudaMemcpy(this->data + index, &rhs, sizeof(T), cudaMemcpyHostToDevice);
-            return *this;
-        }
-
-        Reference& operator=(T& rhs)
+        Reference& operator=(const T& rhs)
         {
             cudaMemcpy(this->data + index, &rhs, sizeof(T), cudaMemcpyHostToDevice);
             return *this;
@@ -207,13 +201,17 @@ public:
         return *this;
     }
 
-    template <typename ... Idx, typename = std::enable_if_t<sizeof...(Idx) == sizeof...(Size)>>
+    template <typename ... Idx,
+        typename = std::enable_if_t<sizeof...(Idx) == sizeof...(Size)>,
+        typename = std::enable_if_t<(... && std::is_same<Idx, int>::value)>>
     Reference operator()(Idx ... idxs)
     {
         return Reference(this->data, compute_index(idxs...));
     }
 
-    template <typename ... Idx, typename = std::enable_if_t<sizeof...(Idx) == sizeof...(Size)>>
+    template <typename ... Idx,
+        typename = std::enable_if_t<sizeof...(Idx) == sizeof...(Size)>,
+        typename = std::enable_if_t<(... && std::is_same<Idx, int>::value)>>
     const Reference operator()(Idx ... idxs) const
     {
         return Reference(this->data, compute_index(idxs...));
