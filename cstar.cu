@@ -125,6 +125,7 @@ private:
     size_t compute_index(Idx... idxs) const
     {
         static_assert(sizeof...(Size) == sizeof...(idxs), "Number of indices must match the number of dimensions.");
+        static_assert((... && std::is_same<Idx, int>::value));
         size_t indices[] = { static_cast<size_t>(idxs)... };
         size_t sizes[] = { static_cast<size_t>(Size)... };
 
