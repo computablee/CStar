@@ -189,7 +189,7 @@ T& operator+=(T& lhs, InstantiatedShape<T, Size ...>& rhs)
     return lhs;
 }
 
-template <int... Size>
+template <int ... Size>
 struct Shape
 {
     template <typename T>
