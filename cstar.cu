@@ -120,6 +120,7 @@ class InstantiatedShape
 {
 private:
     T* data;
+    size_t length;
     
     template <typename... Idx>
     size_t compute_index(Idx... idxs) const
@@ -164,9 +165,9 @@ private:
     };
 
 public:
-    InstantiatedShape()
+    InstantiatedShape() : length((... * Size))
     {
-        cudaMalloc((void**)&this->data, sizeof(T) * (... * Size));
+        cudaMalloc((void**)&this->data, sizeof(T) * length);
     }
 
     ~InstantiatedShape()
@@ -176,28 +177,28 @@ public:
 
     InstantiatedShape& operator=(T scalar)
     {
-        __scalar_assign<(... * Size), T><<<128, 128>>>(this->data, scalar);
+        __scalar_assign<(... * Size), T><<<this->length / 128, 128>>>(this->data, scalar);
         cudaDeviceSynchronize();
         return *this;
     }
 
     InstantiatedShape& operator=(const InstantiatedShape<T, Size ...>& rhs)
     {
-        __vector_assign<(... * Size), T><<<128, 128>>>(this->data, rhs.data);
+        __vector_assign<(... * Size), T><<<this->length / 128, 128>>>(this->data, rhs.data);
         cudaDeviceSynchronize();
         return *this;
     }
 
     InstantiatedShape& operator+=(T scalar)
     {
-        __scalar_add<(... * Size), T><<<128, 128>>>(this->data, scalar);
+        __scalar_add<(... * Size), T><<<this->length / 128, 128>>>(this->data, scalar);
         cudaDeviceSynchronize();
         return *this;
     }
 
     InstantiatedShape& operator+=(const InstantiatedShape<T, Size ...>& rhs)
     {
-        __vector_add<(... * Size), T><<<128, 128>>>(this->data, rhs.data);
+        __vector_add<(... * Size), T><<<this->length / 128, 128>>>(this->data, rhs.data);
         cudaDeviceSynchronize();
         return *this;
     }
@@ -229,7 +230,7 @@ T& operator+=(T& lhs, InstantiatedShape<T, Size ...>& rhs)
 
     T* reductionArray;
     cudaMalloc((void**)&reductionArray, sizeof(T) * blockSize);
-    __reduce<(... * Size), T, blockSize><<<128, blockSize>>>(rhs.data, reductionArray);
+    __reduce<(... * Size), T, blockSize><<<rhs.length / blockSize, blockSize>>>(rhs.data, reductionArray);
     cudaDeviceSynchronize();
 
     T hostArray[blockSize];
