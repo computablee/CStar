@@ -8,44 +8,44 @@
 namespace CStar
 {
 
-template <int Size, typename T>
-__global__ void __scalar_assign(T * __restrict__ data, T scalar)
+template <typename T>
+__global__ void __scalar_assign(T * __restrict__ data, T scalar, size_t size)
 {
     int idx = blockDim.x * blockIdx.x + threadIdx.x;
     int stride = blockDim.x * gridDim.x;
-    for (size_t i = idx; i < Size; i += stride)
+    for (size_t i = idx; i < size; i += stride)
     {
         data[i] = scalar;
     }
 }
 
-template <int Size, typename T>
-__global__ void __vector_assign(T * __restrict__ lhs, T * __restrict__ rhs)
+template <typename T>
+__global__ void __vector_assign(T * __restrict__ lhs, T * __restrict__ rhs, size_t size)
 {
     int idx = blockDim.x * blockIdx.x + threadIdx.x;
     int stride = blockDim.x * gridDim.x;
-    for (size_t i = idx; i < Size; i += stride)
+    for (size_t i = idx; i < size; i += stride)
     {
         lhs[i] = rhs[i];
     }
 }
-template <int Size, typename T>
-__global__ void __scalar_add(T * __restrict__ data, T scalar)
+template <typename T>
+__global__ void __scalar_add(T * __restrict__ data, T scalar, size_t size)
 {
     int idx = blockDim.x * blockIdx.x + threadIdx.x;
     int stride = blockDim.x * gridDim.x;
-    for (size_t i = idx; i < Size; i += stride)
+    for (size_t i = idx; i < size; i += stride)
     {
         data[i] += scalar;
     }
 }
 
-template <int Size, typename T>
-__global__ void __vector_add(T * __restrict__ lhs, T * __restrict__ rhs)
+template <typename T>
+__global__ void __vector_add(T * __restrict__ lhs, T * __restrict__ rhs, size_t size)
 {
     int idx = blockDim.x * blockIdx.x + threadIdx.x;
     int stride = blockDim.x * gridDim.x;
-    for (size_t i = idx; i < Size; i += stride)
+    for (size_t i = idx; i < size; i += stride)
     {
         lhs[i] += rhs[i];
     }
@@ -64,8 +64,8 @@ __device__ void __warpReduce(volatile T * __restrict__ sdata, unsigned int tid)
     if constexpr (BlockSize >=  2) sdata[tid] += sdata[tid + 1];
 }
 
-template <int Size, typename T, unsigned int BlockSize>
-__global__ void __reduce(T * __restrict__ idata, T * __restrict__ odata)
+template <typename T, unsigned int BlockSize>
+__global__ void __reduce(T * __restrict__ idata, T * __restrict__ odata, size_t size)
 {
     extern __shared__ T sdata[];
     unsigned int tid = threadIdx.x;
@@ -73,13 +73,13 @@ __global__ void __reduce(T * __restrict__ idata, T * __restrict__ odata)
     unsigned int gridSize = BlockSize * 2 * gridDim.x;
     sdata[tid] = 0;
 
-    while (i + BlockSize < Size)
+    while (i + BlockSize < size)
     {
         sdata[tid] += idata[i] + idata[i + BlockSize];
         i += gridSize;
     }
 
-    while (i < Size)
+    while (i < size)
     {
         sdata[tid] += idata[i];
         i += gridSize;
@@ -189,28 +189,28 @@ public:
 
     InstantiatedShape& operator=(T scalar)
     {
-        __scalar_assign<(... * Size), T><<<this->length / 128, 128>>>(this->data, scalar);
+        __scalar_assign<T><<<this->length / 128, 128>>>(this->data, scalar, this->length);
         cudaDeviceSynchronize();
         return *this;
     }
 
     InstantiatedShape& operator=(const InstantiatedShape<T, Size ...>& rhs)
     {
-        __vector_assign<(... * Size), T><<<this->length / 128, 128>>>(this->data, rhs.data);
+        __vector_assign<T><<<this->length / 128, 128>>>(this->data, rhs.data, this->length);
         cudaDeviceSynchronize();
         return *this;
     }
 
     InstantiatedShape& operator+=(T scalar)
     {
-        __scalar_add<(... * Size), T><<<this->length / 128, 128>>>(this->data, scalar);
+        __scalar_add<T><<<this->length / 128, 128>>>(this->data, scalar, this->length);
         cudaDeviceSynchronize();
         return *this;
     }
 
     InstantiatedShape& operator+=(const InstantiatedShape<T, Size ...>& rhs)
     {
-        __vector_add<(... * Size), T><<<this->length / 128, 128>>>(this->data, rhs.data);
+        __vector_add<T><<<this->length / 128, 128>>>(this->data, rhs.data, this->length);
         cudaDeviceSynchronize();
         return *this;
     }
@@ -242,7 +242,7 @@ T& operator+=(T& lhs, InstantiatedShape<T, Size ...>& rhs)
 
     T* reductionArray;
     cudaMalloc((void**)&reductionArray, sizeof(T) * blockSize);
-    __reduce<(... * Size), T, blockSize><<<rhs.length / blockSize, blockSize>>>(rhs.data, reductionArray);
+    __reduce<T, blockSize><<<rhs.length / blockSize, blockSize>>>(rhs.data, reductionArray, rhs.length);
     cudaDeviceSynchronize();
 
     T hostArray[blockSize];
