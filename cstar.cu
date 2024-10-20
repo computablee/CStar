@@ -122,7 +122,7 @@ template <typename T, int ... Size>
 T& operator+=(T& lhs, InstantiatedShape<T, Size ...>& rhs);
 
 template <typename T, int ... Size>
-class InstantiatedShape
+class InstantiatedShape final
 {
 private:
     T* data;
@@ -174,6 +174,12 @@ public:
     InstantiatedShape() : length((... * Size))
     {
         cudaMalloc((void**)&this->data, sizeof(T) * length);
+    }
+
+    InstantiatedShape(T init) : length((... * Size))
+    {
+        cudaMalloc((void**)&this->data, sizeof(T) * length);
+        *this = init;
     }
 
     ~InstantiatedShape()

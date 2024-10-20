@@ -7,11 +7,11 @@ using shape = Shape<17, 413>;
 
 int main()
 {
-    shape::shape<float> myshape1, myshape2;
+    shape::shape<float> myshape1;
     float sum = 0;
 
     myshape1 = 3.14;
-    myshape2 = 4.0;
+    shape::shape<float> myshape2 = 4.0f;
 
     myshape1 += myshape2;
 
