@@ -29,6 +29,7 @@ __global__ void __vector_assign(T * __restrict__ lhs, T * __restrict__ rhs, size
         lhs[i] = rhs[i];
     }
 }
+
 template <typename T>
 __global__ void __scalar_add(T * __restrict__ data, T scalar, size_t size)
 {
@@ -182,6 +183,12 @@ public:
         *this = init;
     }
 
+    InstantiatedShape(const InstantiatedShape<T, Size ...>& init) : length((... * Size))
+    {
+        cudaMalloc((void**)&this->data, sizeof(T) * length);
+        *this = init;
+    }
+
     ~InstantiatedShape()
     {
         cudaFree(this->data);
@@ -213,6 +220,13 @@ public:
         __vector_add<T><<<this->length / 128, 128>>>(this->data, rhs.data, this->length);
         cudaDeviceSynchronize();
         return *this;
+    }
+
+    InstantiatedShape<T, Size ...> operator+(const InstantiatedShape<T, Size ...>& rhs)
+    {
+        InstantiatedShape<T, Size ...> temp = *this;
+        temp += rhs;
+        return temp;
     }
 
     template <typename ... Idx,

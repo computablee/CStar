@@ -1,5 +1,6 @@
 #include <cstar.cu>
 #include <iostream>
+#include <cassert>
 
 using namespace CStar;
 
@@ -13,20 +14,20 @@ int main()
     myshape1 = 3.14;
     shape::shape<float> myshape2 = 4.0f;
 
-    myshape1 += myshape2;
+    auto myshape3 = myshape1 + myshape2;
 
-    sum += myshape1;
+    sum += myshape3;
+    auto expected_sum = 17 * 413 * 7.14f;
 
-    std::cout << sum << std::endl;
-    std::cout << 17 * 413 * 7.14 << std::endl;
-
-    std::cout << myshape1(16, 412) << std::endl;
+    assert(!(sum < expected_sum - 0.1 || sum > expected_sum + 0.1));
+    assert(myshape1(16, 412) == 3.14f);
 
     myshape2(4, 6) = 16.8f;
+    assert(myshape2(4, 6) == 16.8f);
+    assert(myshape2(4, 7) == 4.0f);
 
-    std::cout << myshape2(4, 6) << std::endl;
-    std::cout << myshape2(4, 7) << std::endl;
+    assert(rankof_t<shape> == 2);
+    assert(positionsof_t<shape> == 17 * 413);
 
-    std::cout << "Rank of shape is " << rankof_t<shape> << std::endl;
-    std::cout << "Positions of shape is " << positionsof_t<shape> << std::endl;
+    std::cout << "Tests passed." << std::endl;
 }
