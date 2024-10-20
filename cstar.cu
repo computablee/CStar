@@ -224,6 +224,14 @@ public:
         return *this;
     }
 
+    InstantiatedShape<T, Size ...> operator+(T scalar)
+    {
+        InstantiatedShape<T, Size ...> temp;
+        cudaMemcpy(temp.data, this->data, sizeof(T) * this->length, cudaMemcpyDeviceToDevice);
+        temp += scalar;
+        return temp;
+    }
+
     InstantiatedShape<T, Size ...> operator+(const InstantiatedShape<T, Size ...>& rhs)
     {
         InstantiatedShape<T, Size ...> temp;
