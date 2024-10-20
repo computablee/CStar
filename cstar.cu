@@ -1,6 +1,12 @@
+#ifndef __CSTAR
+#define __CSTAR
+
 #include <cstddef>
 #include <cuda.h>
 #include <iostream>
+
+namespace CStar
+{
 
 template <int Size, typename T>
 __global__ void __scalar_assign(T * __restrict__ data, T scalar)
@@ -248,3 +254,37 @@ struct Shape
     template <typename T>
     using shape = InstantiatedShape<T, Size ...>;
 };
+
+template <typename>
+struct is_shape : std::false_type {};
+
+template <int ... Size>
+struct is_shape<Shape<Size ...>> : std::true_type {};
+
+template <typename ShapeInstance, typename = std::enable_if_t<is_shape<ShapeInstance>::value>>
+struct rankof;
+
+template <int ... Size>
+struct rankof<Shape<Size ...>> { static const int value = sizeof...(Size); };
+
+template <typename ShapeInstance, typename = std::enable_if_t<is_shape<ShapeInstance>::value>>
+int rankof_t;
+
+template <int ... Size>
+int rankof_t<Shape<Size ...>> = rankof<Shape<Size ...>>::value;
+
+template <typename ShapeInstance, typename = std::enable_if_t<is_shape<ShapeInstance>::value>>
+struct positionsof;
+
+template <int ... Size>
+struct positionsof<Shape<Size ...>> { static const int value = (... * Size); };
+
+template <typename ShapeInstance, typename = std::enable_if_t<is_shape<ShapeInstance>::value>>
+int positionsof_t;
+
+template <int ... Size>
+int positionsof_t<Shape<Size ...>> = positionsof<Shape<Size ...>>::value;
+
+}
+
+#endif

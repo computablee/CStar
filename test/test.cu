@@ -1,6 +1,8 @@
 #include <cstar.cu>
 #include <iostream>
 
+using namespace CStar;
+
 using shape = Shape<17, 413>;
 
 int main()
@@ -24,4 +26,7 @@ int main()
 
     std::cout << myshape2(4, 6) << std::endl;
     std::cout << myshape2(4, 7) << std::endl;
+
+    std::cout << "Rank of shape is " << rankof_t<shape> << std::endl;
+    std::cout << "Positions of shape is " << positionsof_t<shape> << std::endl;
 }
