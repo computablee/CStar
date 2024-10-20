@@ -1,5 +1,6 @@
 #include <cstddef>
 #include <cuda.h>
+#include <iostream>
 
 template <int Size, typename T>
 __global__ void __scalar_assign(T * __restrict__ data, T scalar)
@@ -119,11 +120,33 @@ class InstantiatedShape
 {
 private:
     T* data;
+    
+    template <typename... Idx>
+    size_t compute_index(Idx... idxs) const
+    {
+        static_assert(sizeof...(Size) == sizeof...(idxs), "Number of indices must match the number of dimensions.");
+        size_t indices[] = { static_cast<size_t>(idxs)... };
+        size_t sizes[] = { static_cast<size_t>(Size)... };
+
+        size_t index = 0;
+        size_t multiplier = 1;
+        for (int i = sizeof...(Size) - 1; i >= 0; --i)
+        {
+            index += indices[i] * multiplier;
+            multiplier *= sizes[i];
+        }
+        return index;
+    }
 
 public:
     InstantiatedShape()
     {
         cudaMalloc((void**)&this->data, sizeof(T) * (... * Size));
+    }
+
+    ~InstantiatedShape()
+    {
+        cudaFree(this->data);
     }
 
     InstantiatedShape& operator=(T scalar)
@@ -154,16 +177,20 @@ public:
         return *this;
     }
 
-    T operator[](int idx)
+    template <typename ... Idx, typename = std::enable_if_t<sizeof...(Idx) == sizeof...(Size)>>
+    T operator()(Idx ... idxs)
     {
         T result;
-        cudaMemcpy(&result, this->data + idx, sizeof(T), cudaMemcpyDeviceToHost);
+        cudaMemcpy(&result, this->data + compute_index(idxs...), sizeof(T), cudaMemcpyDeviceToHost);
         return result;
     }
 
-    ~InstantiatedShape()
+    template <typename ... Idx, typename = std::enable_if_t<sizeof...(Idx) == sizeof...(Size)>>
+    const T operator()(Idx ... idxs) const
     {
-        cudaFree(this->data);
+        T result;
+        cudaMemcpy(&result, this->data + compute_index(idxs...), sizeof(T), cudaMemcpyDeviceToHost);
+        return result;
     }
 
     template <typename U, int ... S>
