@@ -66,9 +66,15 @@ __global__ void __reduce(T * __restrict__ idata, T * __restrict__ odata)
     unsigned int gridSize = BlockSize * 2 * gridDim.x;
     sdata[tid] = 0;
 
-    while (i < Size)
+    while (i + BlockSize < Size)
     {
         sdata[tid] += idata[i] + idata[i + BlockSize];
+        i += gridSize;
+    }
+
+    while (i < Size)
+    {
+        sdata[tid] += idata[i];
         i += gridSize;
     }
 
