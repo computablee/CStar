@@ -299,10 +299,10 @@ template <int ... Size>
 struct rankof<Shape<Size ...>> { static const int value = sizeof...(Size); };
 
 template <typename ShapeInstance, typename = std::enable_if_t<is_shape<ShapeInstance>::value>>
-int rankof_t;
+constexpr int rankof_t = 0;
 
 template <int ... Size>
-int rankof_t<Shape<Size ...>> = rankof<Shape<Size ...>>::value;
+constexpr int rankof_t<Shape<Size ...>> = rankof<Shape<Size ...>>::value;
 
 template <typename ShapeInstance, typename = std::enable_if_t<is_shape<ShapeInstance>::value>>
 struct positionsof;
@@ -311,10 +311,10 @@ template <int ... Size>
 struct positionsof<Shape<Size ...>> { static const int value = (... * Size); };
 
 template <typename ShapeInstance, typename = std::enable_if_t<is_shape<ShapeInstance>::value>>
-int positionsof_t;
+constexpr int positionsof_t = 0;
 
 template <int ... Size>
-int positionsof_t<Shape<Size ...>> = positionsof<Shape<Size ...>>::value;
+constexpr int positionsof_t<Shape<Size ...>> = positionsof<Shape<Size ...>>::value;
 
 }
 
