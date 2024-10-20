@@ -180,13 +180,15 @@ public:
     InstantiatedShape(T init) : length((... * Size))
     {
         cudaMalloc((void**)&this->data, sizeof(T) * length);
-        *this = init;
+        __scalar_assign<T><<<this->length / 128, 128>>>(this->data, init, this->length);
+        cudaDeviceSynchronize();
     }
 
     InstantiatedShape(const InstantiatedShape<T, Size ...>& init) : length((... * Size))
     {
         cudaMalloc((void**)&this->data, sizeof(T) * length);
-        *this = init;
+        __vector_assign<T><<<this->length / 128, 128>>>(this->data, init.data, this->length);
+        cudaDeviceSynchronize();
     }
 
     ~InstantiatedShape()
