@@ -123,24 +123,28 @@ public:
     InstantiatedShape& operator=(T scalar)
     {
         __scalar_assign<Size, T><<<128, 128>>>(this->data, scalar);
+        cudaDeviceSynchronize();
         return *this;
     }
 
     InstantiatedShape& operator=(const InstantiatedShape<Size, T>& rhs)
     {
         __vector_assign<Size, T><<<128, 128>>>(this->data, rhs.data);
+        cudaDeviceSynchronize();
         return *this;
     }
 
     InstantiatedShape& operator+=(T scalar)
     {
         __scalar_add<Size, T><<<128, 128>>>(this->data, scalar);
+        cudaDeviceSynchronize();
         return *this;
     }
 
     InstantiatedShape& operator+=(const InstantiatedShape<Size, T>& rhs)
     {
         __vector_add<Size, T><<<128, 128>>>(this->data, rhs.data);
+        cudaDeviceSynchronize();
         return *this;
     }
 
