@@ -1,7 +1,7 @@
 #include <cstar.cu>
 #include <iostream>
 
-using shape = Shape<1037>;
+using shape = Shape<17, 413>;
 
 int main()
 {
@@ -16,5 +16,5 @@ int main()
     sum += myshape1;
 
     std::cout << sum << std::endl;
-    std::cout << 1037 * 7.14 << std::endl;
+    std::cout << 17 * 413 * 7.14 << std::endl;
 }

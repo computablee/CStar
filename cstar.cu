@@ -108,13 +108,13 @@ __global__ void __reduce(T * __restrict__ idata, T * __restrict__ odata)
     if (tid == 0) odata[blockIdx.x] = sdata[0];
 }
 
-template <int Size, typename T>
+template <typename T, int ... Size>
 class InstantiatedShape;
 
-template <int Size, typename T>
-T& operator+=(T& lhs, InstantiatedShape<Size, T>& rhs);
+template <typename T, int ... Size>
+T& operator+=(T& lhs, InstantiatedShape<T, Size ...>& rhs);
 
-template <int Size, typename T>
+template <typename T, int ... Size>
 class InstantiatedShape
 {
 private:
@@ -123,33 +123,33 @@ private:
 public:
     InstantiatedShape()
     {
-        cudaMalloc((void**)&this->data, sizeof(T) * Size);
+        cudaMalloc((void**)&this->data, sizeof(T) * (... * Size));
     }
 
     InstantiatedShape& operator=(T scalar)
     {
-        __scalar_assign<Size, T><<<128, 128>>>(this->data, scalar);
+        __scalar_assign<(... * Size), T><<<128, 128>>>(this->data, scalar);
         cudaDeviceSynchronize();
         return *this;
     }
 
-    InstantiatedShape& operator=(const InstantiatedShape<Size, T>& rhs)
+    InstantiatedShape& operator=(const InstantiatedShape<T, Size ...>& rhs)
     {
-        __vector_assign<Size, T><<<128, 128>>>(this->data, rhs.data);
+        __vector_assign<(... * Size), T><<<128, 128>>>(this->data, rhs.data);
         cudaDeviceSynchronize();
         return *this;
     }
 
     InstantiatedShape& operator+=(T scalar)
     {
-        __scalar_add<Size, T><<<128, 128>>>(this->data, scalar);
+        __scalar_add<(... * Size), T><<<128, 128>>>(this->data, scalar);
         cudaDeviceSynchronize();
         return *this;
     }
 
-    InstantiatedShape& operator+=(const InstantiatedShape<Size, T>& rhs)
+    InstantiatedShape& operator+=(const InstantiatedShape<T, Size ...>& rhs)
     {
-        __vector_add<Size, T><<<128, 128>>>(this->data, rhs.data);
+        __vector_add<(... * Size), T><<<128, 128>>>(this->data, rhs.data);
         cudaDeviceSynchronize();
         return *this;
     }
@@ -166,18 +166,18 @@ public:
         cudaFree(this->data);
     }
 
-    template <int S, typename U>
-    friend U& operator+=(U& lhs, InstantiatedShape<S, U>& rhs);
+    template <typename U, int ... S>
+    friend U& operator+=(U& lhs, InstantiatedShape<U, S ...>& rhs);
 };
 
-template <int Size, typename T>
-T& operator+=(T& lhs, InstantiatedShape<Size, T>& rhs)
+template <typename T, int ... Size>
+T& operator+=(T& lhs, InstantiatedShape<T, Size ...>& rhs)
 {
     constexpr int blockSize = 128;
 
     T* reductionArray;
     cudaMalloc((void**)&reductionArray, sizeof(T) * blockSize);
-    __reduce<Size, T, blockSize><<<128, blockSize>>>(rhs.data, reductionArray);
+    __reduce<(... * Size), T, blockSize><<<128, blockSize>>>(rhs.data, reductionArray);
     cudaDeviceSynchronize();
 
     T hostArray[blockSize];
@@ -189,9 +189,9 @@ T& operator+=(T& lhs, InstantiatedShape<Size, T>& rhs)
     return lhs;
 }
 
-template <int Size>
+template <int... Size>
 struct Shape
 {
     template <typename T>
-    using shape = InstantiatedShape<Size, T>;
+    using shape = InstantiatedShape<T, Size ...>;
 };
