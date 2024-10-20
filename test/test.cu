@@ -18,5 +18,10 @@ int main()
     std::cout << sum << std::endl;
     std::cout << 17 * 413 * 7.14 << std::endl;
 
-    std::cout << myshape1(14, 16) << std::endl;
+    std::cout << myshape1(16, 412) << std::endl;
+
+    myshape2(4, 6) = 16.8f;
+
+    std::cout << myshape2(4, 6) << std::endl;
+    std::cout << myshape2(4, 7) << std::endl;
 }

@@ -138,6 +138,36 @@ private:
         return index;
     }
 
+    class Reference
+    {
+        T* data;
+        size_t index;
+
+        friend class InstantiatedShape<T, Size ...>;
+
+        Reference(T* data, size_t index) : data(data), index(index) { }
+
+    public:
+        operator T()
+        {
+            T result;
+            cudaMemcpy(&result, this->data + index, sizeof(T), cudaMemcpyDeviceToHost);
+            return result;
+        }
+
+        Reference& operator=(T rhs)
+        {
+            cudaMemcpy(this->data + index, &rhs, sizeof(T), cudaMemcpyHostToDevice);
+            return *this;
+        }
+
+        Reference& operator=(T& rhs)
+        {
+            cudaMemcpy(this->data + index, &rhs, sizeof(T), cudaMemcpyHostToDevice);
+            return *this;
+        }
+    };
+
 public:
     InstantiatedShape()
     {
@@ -178,19 +208,15 @@ public:
     }
 
     template <typename ... Idx, typename = std::enable_if_t<sizeof...(Idx) == sizeof...(Size)>>
-    T operator()(Idx ... idxs)
+    Reference operator()(Idx ... idxs)
     {
-        T result;
-        cudaMemcpy(&result, this->data + compute_index(idxs...), sizeof(T), cudaMemcpyDeviceToHost);
-        return result;
+        return Reference(this->data, compute_index(idxs...));
     }
 
     template <typename ... Idx, typename = std::enable_if_t<sizeof...(Idx) == sizeof...(Size)>>
-    const T operator()(Idx ... idxs) const
+    const Reference operator()(Idx ... idxs) const
     {
-        T result;
-        cudaMemcpy(&result, this->data + compute_index(idxs...), sizeof(T), cudaMemcpyDeviceToHost);
-        return result;
+        return Reference(this->data, compute_index(idxs...));
     }
 
     template <typename U, int ... S>
