@@ -44,6 +44,8 @@ __global__ void __vector_add(T * __restrict__ lhs, T * __restrict__ rhs)
     }
 }
 
+// This reduction code is provided courtesy of Nvidia's slides
+// See: https://developer.download.nvidia.com/assets/cuda/files/reduction.pdf
 template <typename T, unsigned int BlockSize>
 __device__ void __warpReduce(volatile T * __restrict__ sdata, unsigned int tid)
 {
