@@ -224,7 +224,8 @@ public:
 
     InstantiatedShape<T, Size ...> operator+(const InstantiatedShape<T, Size ...>& rhs)
     {
-        InstantiatedShape<T, Size ...> temp = *this;
+        InstantiatedShape<T, Size ...> temp;
+        cudaMemcpy(temp.data, this->data, sizeof(T) * this->length, cudaMemcpyDeviceToDevice);
         temp += rhs;
         return temp;
     }
