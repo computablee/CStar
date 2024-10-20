@@ -60,7 +60,7 @@ __device__ void __warpReduce(volatile T * __restrict__ sdata, unsigned int tid)
 template <int Size, typename T, unsigned int BlockSize>
 __global__ void __reduce(T * __restrict__ idata, T * __restrict__ odata)
 {
-    extern __shared__ int sdata[];
+    extern __shared__ T sdata[];
     unsigned int tid = threadIdx.x;
     unsigned int i = blockIdx.x * (BlockSize * 2) + tid;
     unsigned int gridSize = BlockSize * 2 * gridDim.x;
