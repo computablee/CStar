@@ -208,7 +208,10 @@ template <typename T, int ... Size>
 class InstantiatedShape;
 
 template <typename T, int ... Size>
-T& operator+=(T& lhs, InstantiatedShape<T, Size ...>& rhs);
+T& operator+=(T& lhs, const InstantiatedShape<T, Size ...>& rhs);
+
+template <typename T, int ... Size>
+T& operator*=(T& lhs, const InstantiatedShape<T, Size ...>& rhs);
 
 template <typename T, int ... Size>
 class InstantiatedShape final
@@ -383,26 +386,27 @@ public:
     }
 
     template <typename U, int ... S>
-    friend U& operator+=(U& lhs, InstantiatedShape<U, S ...>& rhs);
+    friend U& operator+=(U& lhs, const InstantiatedShape<U, S ...>& rhs);
 
     template <typename U, int ... S>
-    friend U& operator*=(U& lhs, InstantiatedShape<U, S ...>& rhs);
+    friend U& operator*=(U& lhs, const InstantiatedShape<U, S ...>& rhs);
 };
 
 template <typename T, int ... Size>
-T& operator+=(T& lhs, InstantiatedShape<T, Size ...>& rhs)
+T& operator+=(T& lhs, const InstantiatedShape<T, Size ...>& rhs)
 {
     constexpr int blockSize = 128;
+    const int gridSize = rhs.length / blockSize;
 
     T* reductionArray;
-    cudaMalloc((void**)&reductionArray, sizeof(T) * (rhs.length / blockSize));
+    cudaMalloc((void**)&reductionArray, sizeof(T) * gridSize);
     __reduce_add<T, blockSize><<<rhs.length / blockSize, blockSize>>>(rhs.data, reductionArray, rhs.length);
     cudaDeviceSynchronize();
 
-    T hostArray[(rhs.length / blockSize)];
-    cudaMemcpy(hostArray, reductionArray, sizeof(T) * (rhs.length / blockSize), cudaMemcpyDeviceToHost);
+    T hostArray[gridSize];
+    cudaMemcpy(hostArray, reductionArray, sizeof(T) * gridSize, cudaMemcpyDeviceToHost);
 
-    for (size_t i = 0; i < (rhs.length / blockSize); i++)
+    for (size_t i = 0; i < gridSize; i++)
         lhs += hostArray[i];
 
     cudaFree(reductionArray);
@@ -411,19 +415,20 @@ T& operator+=(T& lhs, InstantiatedShape<T, Size ...>& rhs)
 }
 
 template <typename T, int ... Size>
-T& operator*=(T& lhs, InstantiatedShape<T, Size ...>& rhs)
+T& operator*=(T& lhs, const InstantiatedShape<T, Size ...>& rhs)
 {
     constexpr int blockSize = 128;
+    const int gridSize = rhs.length / blockSize;
 
     T* reductionArray;
-    cudaMalloc((void**)&reductionArray, sizeof(T) * (rhs.length / blockSize));
+    cudaMalloc((void**)&reductionArray, sizeof(T) * gridSize);
     __reduce_mult<T, blockSize><<<rhs.length / blockSize, blockSize>>>(rhs.data, reductionArray, rhs.length);
     cudaDeviceSynchronize();
 
-    T hostArray[(rhs.length / blockSize)];
-    cudaMemcpy(hostArray, reductionArray, sizeof(T) * (rhs.length / blockSize), cudaMemcpyDeviceToHost);
+    T hostArray[gridSize];
+    cudaMemcpy(hostArray, reductionArray, sizeof(T) * gridSize, cudaMemcpyDeviceToHost);
 
-    for (size_t i = 0; i < (rhs.length / blockSize); i++)
+    for (size_t i = 0; i < gridSize; i++)
         lhs *= hostArray[i];
 
     cudaFree(reductionArray);
