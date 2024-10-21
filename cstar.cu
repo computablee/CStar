@@ -400,7 +400,7 @@ T& operator+=(T& lhs, const InstantiatedShape<T, Size ...>& rhs)
 
     T* reductionArray;
     cudaMalloc((void**)&reductionArray, sizeof(T) * gridSize);
-    __reduce_add<T, blockSize><<<rhs.length / blockSize, blockSize>>>(rhs.data, reductionArray, rhs.length);
+    __reduce_add<T, blockSize><<<gridSize, blockSize>>>(rhs.data, reductionArray, rhs.length);
     cudaDeviceSynchronize();
 
     T hostArray[gridSize];
@@ -422,7 +422,7 @@ T& operator*=(T& lhs, const InstantiatedShape<T, Size ...>& rhs)
 
     T* reductionArray;
     cudaMalloc((void**)&reductionArray, sizeof(T) * gridSize);
-    __reduce_mult<T, blockSize><<<rhs.length / blockSize, blockSize>>>(rhs.data, reductionArray, rhs.length);
+    __reduce_mult<T, blockSize><<<gridSize, blockSize>>>(rhs.data, reductionArray, rhs.length);
     cudaDeviceSynchronize();
 
     T hostArray[gridSize];
