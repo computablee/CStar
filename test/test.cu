@@ -40,12 +40,16 @@ int main()
     auto myshape5 = std::move(myshape4);
 
     shape2::shape<float> mult_reduce = 1.01f;
-    float mult_reduce_prod = 1;
+    float mult_reduce_prod = 2;
 
     mult_reduce_prod *= mult_reduce;
-    auto expected_mult_reduce = pow(1.01f, 400);
+    auto expected_mult_reduce = pow(1.01f, 400) * 2;
 
     assert(!(mult_reduce_prod < expected_mult_reduce - 0.1f || mult_reduce_prod > expected_mult_reduce + 0.1f));
+
+    myshape1(4, 5) = 15;
+    myshape1(0, 0) = myshape1(4, 5);
+    assert(myshape1(0, 0) == 15);
 
     std::cout << "Tests passed." << std::endl;
 }

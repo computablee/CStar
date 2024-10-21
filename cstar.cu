@@ -208,12 +208,6 @@ template <typename T, int ... Size>
 class InstantiatedShape;
 
 template <typename T, int ... Size>
-T& operator+=(T& lhs, const InstantiatedShape<T, Size ...>& rhs);
-
-template <typename T, int ... Size>
-T& operator*=(T& lhs, const InstantiatedShape<T, Size ...>& rhs);
-
-template <typename T, int ... Size>
 class InstantiatedShape final
 {
 private:
@@ -258,6 +252,12 @@ private:
         Reference& operator=(const T& rhs)
         {
             cudaMemcpy(this->data + index, &rhs, sizeof(T), cudaMemcpyHostToDevice);
+            return *this;
+        }
+
+        Reference& operator=(const Reference& rhs)
+        {
+            cudaMemcpy(this->data + this->index, rhs.data + rhs.index, sizeof(T), cudaMemcpyDeviceToDevice);
             return *this;
         }
     };
