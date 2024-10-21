@@ -205,9 +205,6 @@ __global__ void __reduce_mult(T * __restrict__ idata, T * __restrict__ odata, si
 }
 
 template <typename T, int ... Size>
-class InstantiatedShape;
-
-template <typename T, int ... Size>
 class InstantiatedShape final
 {
 private:
