@@ -77,7 +77,7 @@ __global__ void __vector_mult(T * __restrict__ lhs, T * __restrict__ rhs, size_t
 // This reduction code is provided courtesy of Nvidia's slides
 // See: https://developer.download.nvidia.com/assets/cuda/files/reduction.pdf
 template <typename T, unsigned int BlockSize>
-__device__ void __warpReduce(volatile T * __restrict__ sdata, unsigned int tid)
+__device__ void __warpReduce_add(volatile T * __restrict__ sdata, unsigned int tid)
 {
     if constexpr (BlockSize >= 64) sdata[tid] += sdata[tid + 32];
     if constexpr (BlockSize >= 32) sdata[tid] += sdata[tid + 16];
@@ -88,19 +88,21 @@ __device__ void __warpReduce(volatile T * __restrict__ sdata, unsigned int tid)
 }
 
 template <typename T, unsigned int BlockSize>
-__global__ void __reduce(T * __restrict__ idata, T * __restrict__ odata, size_t size)
+__global__ void __reduce_add(T * __restrict__ idata, T * __restrict__ odata, size_t size)
 {
     extern __shared__ T sdata[];
     unsigned int tid = threadIdx.x;
     unsigned int i = blockIdx.x * (BlockSize * 2) + tid;
     unsigned int gridSize = BlockSize * 2 * gridDim.x;
-    sdata[tid] = 0;
+    sdata[tid] = static_cast<T>(0);
 
     while (i + BlockSize < size)
     {
         sdata[tid] += idata[i] + idata[i + BlockSize];
         i += gridSize;
     }
+
+    __syncthreads();
 
     while (i < size)
     {
@@ -134,7 +136,71 @@ __global__ void __reduce(T * __restrict__ idata, T * __restrict__ odata, size_t 
         __syncthreads();
     }
 
-    if (tid < 32) __warpReduce<T, BlockSize>(sdata, tid);
+    if (tid < 32) __warpReduce_add<T, BlockSize>(sdata, tid);
+    if (tid == 0) odata[blockIdx.x] = sdata[0];
+}
+
+template <typename T, unsigned int BlockSize>
+__device__ void __warpReduce_mult(volatile T * __restrict__ sdata, unsigned int tid)
+{
+    if constexpr (BlockSize >= 64) sdata[tid] *= sdata[tid + 32];
+    if constexpr (BlockSize >= 32) sdata[tid] *= sdata[tid + 16];
+    if constexpr (BlockSize >= 16) sdata[tid] *= sdata[tid + 8];
+    if constexpr (BlockSize >=  8) sdata[tid] *= sdata[tid + 4];
+    if constexpr (BlockSize >=  4) sdata[tid] *= sdata[tid + 2];
+    if constexpr (BlockSize >=  2) sdata[tid] *= sdata[tid + 1];
+}
+
+template <typename T, unsigned int BlockSize>
+__global__ void __reduce_mult(T * __restrict__ idata, T * __restrict__ odata, size_t size)
+{
+    extern __shared__ T sdata[];
+    unsigned int tid = threadIdx.x;
+    unsigned int i = blockIdx.x * (BlockSize * 2) + tid;
+    unsigned int gridSize = BlockSize * 2 * gridDim.x;
+    sdata[tid] = static_cast<T>(1);
+
+    while (i + BlockSize < size)
+    {
+        sdata[tid] *= idata[i] * idata[i + BlockSize];
+        i += gridSize;
+    }
+
+    __syncthreads();
+
+    while (i < size)
+    {
+        sdata[tid] *= idata[i];
+        i += gridSize;
+    }
+
+    __syncthreads();
+
+    if constexpr (BlockSize >= 512)
+    {
+        if (tid < 256)
+            sdata[tid] *= sdata[tid + 256];
+
+        __syncthreads();
+    }
+
+    if constexpr (BlockSize >= 256)
+    {
+        if (tid < 128)
+            sdata[tid] *= sdata[tid + 128];
+
+        __syncthreads();
+    }
+
+    if constexpr (BlockSize >= 128)
+    {
+        if (tid < 64)
+            sdata[tid] *= sdata[tid + 64];
+
+        __syncthreads();
+    }
+
+    if (tid < 32) __warpReduce_mult<T, BlockSize>(sdata, tid);
     if (tid == 0) odata[blockIdx.x] = sdata[0];
 }
 
@@ -318,6 +384,9 @@ public:
 
     template <typename U, int ... S>
     friend U& operator+=(U& lhs, InstantiatedShape<U, S ...>& rhs);
+
+    template <typename U, int ... S>
+    friend U& operator*=(U& lhs, InstantiatedShape<U, S ...>& rhs);
 };
 
 template <typename T, int ... Size>
@@ -326,15 +395,38 @@ T& operator+=(T& lhs, InstantiatedShape<T, Size ...>& rhs)
     constexpr int blockSize = 128;
 
     T* reductionArray;
-    cudaMalloc((void**)&reductionArray, sizeof(T) * blockSize);
-    __reduce<T, blockSize><<<rhs.length / blockSize, blockSize>>>(rhs.data, reductionArray, rhs.length);
+    cudaMalloc((void**)&reductionArray, sizeof(T) * (rhs.length / blockSize));
+    __reduce_add<T, blockSize><<<rhs.length / blockSize, blockSize>>>(rhs.data, reductionArray, rhs.length);
     cudaDeviceSynchronize();
 
-    T hostArray[blockSize];
-    cudaMemcpy(hostArray, reductionArray, sizeof(T) * blockSize, cudaMemcpyDeviceToHost);
+    T hostArray[(rhs.length / blockSize)];
+    cudaMemcpy(hostArray, reductionArray, sizeof(T) * (rhs.length / blockSize), cudaMemcpyDeviceToHost);
 
-    for (size_t i = 0; i < blockSize; i++)
+    for (size_t i = 0; i < (rhs.length / blockSize); i++)
         lhs += hostArray[i];
+
+    cudaFree(reductionArray);
+
+    return lhs;
+}
+
+template <typename T, int ... Size>
+T& operator*=(T& lhs, InstantiatedShape<T, Size ...>& rhs)
+{
+    constexpr int blockSize = 128;
+
+    T* reductionArray;
+    cudaMalloc((void**)&reductionArray, sizeof(T) * (rhs.length / blockSize));
+    __reduce_mult<T, blockSize><<<rhs.length / blockSize, blockSize>>>(rhs.data, reductionArray, rhs.length);
+    cudaDeviceSynchronize();
+
+    T hostArray[(rhs.length / blockSize)];
+    cudaMemcpy(hostArray, reductionArray, sizeof(T) * (rhs.length / blockSize), cudaMemcpyDeviceToHost);
+
+    for (size_t i = 0; i < (rhs.length / blockSize); i++)
+        lhs *= hostArray[i];
+
+    cudaFree(reductionArray);
 
     return lhs;
 }

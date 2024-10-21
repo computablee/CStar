@@ -2,10 +2,12 @@
 #include <iostream>
 #include <utility>
 #include <cassert>
+#include <cmath>
 
 using namespace CStar;
 
 using shape = Shape<17, 413>;
+using shape2 = Shape<20, 20>;
 
 int main()
 {
@@ -36,6 +38,14 @@ int main()
     assert(myshape4(5, 8) == 8.0f);
 
     auto myshape5 = std::move(myshape4);
+
+    shape2::shape<float> mult_reduce = 1.01f;
+    float mult_reduce_prod = 1;
+
+    mult_reduce_prod *= mult_reduce;
+    auto expected_mult_reduce = pow(1.01f, 400);
+
+    assert(!(mult_reduce_prod < expected_mult_reduce - 0.1f || mult_reduce_prod > expected_mult_reduce + 0.1f));
 
     std::cout << "Tests passed." << std::endl;
 }
