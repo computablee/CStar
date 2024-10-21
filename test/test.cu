@@ -1,5 +1,6 @@
 #include <cstar.cu>
 #include <iostream>
+#include <utility>
 #include <cassert>
 
 using namespace CStar;
@@ -28,6 +29,13 @@ int main()
 
     assert(rankof_t<shape> == 2);
     assert(positionsof_t<shape> == 17 * 413);
+
+    auto myshape4 = myshape2 * 2;
+
+    assert(myshape4(4, 6) == 16.8f * 2);
+    assert(myshape4(5, 8) == 8.0f);
+
+    auto myshape5 = std::move(myshape4);
 
     std::cout << "Tests passed." << std::endl;
 }

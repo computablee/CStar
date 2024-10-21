@@ -52,6 +52,28 @@ __global__ void __vector_add(T * __restrict__ lhs, T * __restrict__ rhs, size_t 
     }
 }
 
+template <typename T>
+__global__ void __scalar_mult(T * __restrict__ data, T scalar, size_t size)
+{
+    int idx = blockDim.x * blockIdx.x + threadIdx.x;
+    int stride = blockDim.x * gridDim.x;
+    for (size_t i = idx; i < size; i += stride)
+    {
+        data[i] *= scalar;
+    }
+}
+
+template <typename T>
+__global__ void __vector_mult(T * __restrict__ lhs, T * __restrict__ rhs, size_t size)
+{
+    int idx = blockDim.x * blockIdx.x + threadIdx.x;
+    int stride = blockDim.x * gridDim.x;
+    for (size_t i = idx; i < size; i += stride)
+    {
+        lhs[i] *= rhs[i];
+    }
+}
+
 // This reduction code is provided courtesy of Nvidia's slides
 // See: https://developer.download.nvidia.com/assets/cuda/files/reduction.pdf
 template <typename T, unsigned int BlockSize>
@@ -191,9 +213,17 @@ public:
         cudaDeviceSynchronize();
     }
 
+    InstantiatedShape(InstantiatedShape<T, Size ...>&& init) : length((... * Size))
+    {
+        this->data = init.data;
+        init.data = 0;
+        init.length = 0;
+    }
+
     ~InstantiatedShape()
     {
-        cudaFree(this->data);
+        if (this->data)
+            cudaFree(this->data);
     }
 
     InstantiatedShape& operator=(T scalar)
@@ -237,6 +267,36 @@ public:
         InstantiatedShape<T, Size ...> temp;
         cudaMemcpy(temp.data, this->data, sizeof(T) * this->length, cudaMemcpyDeviceToDevice);
         temp += rhs;
+        return temp;
+    }
+
+    InstantiatedShape& operator*=(T scalar)
+    {
+        __scalar_mult<T><<<this->length / 128, 128>>>(this->data, scalar, this->length);
+        cudaDeviceSynchronize();
+        return *this;
+    }
+
+    InstantiatedShape& operator*=(const InstantiatedShape<T, Size ...>& rhs)
+    {
+        __vector_mult<T><<<this->length / 128, 128>>>(this->data, rhs.data, this->length);
+        cudaDeviceSynchronize();
+        return *this;
+    }
+
+    InstantiatedShape<T, Size ...> operator*(T scalar)
+    {
+        InstantiatedShape<T, Size ...> temp;
+        cudaMemcpy(temp.data, this->data, sizeof(T) * this->length, cudaMemcpyDeviceToDevice);
+        temp *= scalar;
+        return temp;
+    }
+
+    InstantiatedShape<T, Size ...> operator*(const InstantiatedShape<T, Size ...>& rhs)
+    {
+        InstantiatedShape<T, Size ...> temp;
+        cudaMemcpy(temp.data, this->data, sizeof(T) * this->length, cudaMemcpyDeviceToDevice);
+        temp *= rhs;
         return temp;
     }
 
